@@ -1,3 +1,5 @@
+const { assert } = require("chai");
+
 const SushiToken = artifacts.require('SushiToken');
 const SushiMaker = artifacts.require('SushiMaker');
 const MockERC20 = artifacts.require('MockERC20');
@@ -17,13 +19,19 @@ contract('SushiMaker', ([alice, bar, minter]) => {
         this.wethToken1 = await UniswapV2Pair.at((await this.factory.createPair(this.weth.address, this.token1.address)).logs[0].args.pair);
         this.wethToken2 = await UniswapV2Pair.at((await this.factory.createPair(this.weth.address, this.token2.address)).logs[0].args.pair);
         this.token1Token2 = await UniswapV2Pair.at((await this.factory.createPair(this.token1.address, this.token2.address)).logs[0].args.pair);
+        this.token1Token2.allEvents().on("data", function(e){
+            console.log("events ", e.valueOf());
+            done();
+        });
     });
 
     it('should make SUSHIs successfully', async () => {
+
         await this.factory.setFeeTo(this.maker.address, { from: alice });
         await this.weth.transfer(this.sushiWETH.address, '10000000', { from: minter });
         await this.sushi.transfer(this.sushiWETH.address, '10000000', { from: minter });
         await this.sushiWETH.mint(minter);
+        assert.equal((await this.sushiWETH.balanceOf(minter)).valueOf().toString(), '9999000');
         await this.weth.transfer(this.wethToken1.address, '10000000', { from: minter });
         await this.token1.transfer(this.wethToken1.address, '10000000', { from: minter });
         await this.wethToken1.mint(minter);
@@ -40,12 +48,15 @@ contract('SushiMaker', ([alice, bar, minter]) => {
         await this.token1.transfer(this.token1Token2.address, '10000000', { from: minter });
         await this.token2.transfer(this.token1Token2.address, '10000000', { from: minter });
         await this.token1Token2.mint(minter);
+
+        assert.equal((await this.token1Token2.balanceOf(minter)).valueOf().toString(), '19916354');
         // Maker should have the LP now
         assert.equal((await this.token1Token2.balanceOf(this.maker.address)).valueOf(), '16528');
+
         // After calling convert, bar should have SUSHI value at ~1/6 of revenue
-        await this.maker.convert(this.token1.address, this.token2.address);
+        let ev = await this.maker.convert(this.token1.address, this.token2.address);
         assert.equal((await this.sushi.balanceOf(bar)).valueOf(), '32965');
-        assert.equal((await this.token1Token2.balanceOf(this.maker.address)).valueOf(), '0');
+        assert.equal((await this.token1Token2.balanceOf(this.maker.address)).valueOf().toString(), '0');
         // Should also work for SUSHI-ETH pair
         await this.sushi.transfer(this.sushiWETH.address, '100000', { from: minter });
         await this.weth.transfer(this.sushiWETH.address, '100000', { from: minter });
