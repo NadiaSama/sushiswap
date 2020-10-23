@@ -1,5 +1,5 @@
-usePlugin("@nomiclabs/buidler-waffle");
-usePlugin("@nomiclabs/buidler-truffle5");
+require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-truffle5");
 
 // This is a sample Buidler task. To learn how to create your own go to
 // https://buidler.dev/guides/create-task.html
@@ -17,7 +17,7 @@ task("accounts", "Prints the list of accounts", async () => {
 // Go to https://buidler.dev/config/ to learn more
 module.exports = {
   // This is a sample solc configuration that specifies which version of solc to use
-  solc: {
+  solidity: {
     version: "0.6.12",
   },
 };
