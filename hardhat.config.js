@@ -20,4 +20,10 @@ module.exports = {
   solidity: {
     version: "0.6.12",
   },
+
+  networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    }
+  }
 };
