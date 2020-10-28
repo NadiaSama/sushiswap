@@ -38,7 +38,7 @@ describe("UniSwap Test", () => {
 
     it("test add liquid", async() => {
         const Pair = await ethers.getContractFactory("UniswapV2Pair");
-        const [masterKey] = await ethers.getSigners();
+        const [masterKey, recv] = await ethers.getSigners();
         await this.factory.createPair(this.tokenA.address, this.tokenB.address);
         const address = await this.factory.getPair(this.tokenA.address, this.tokenB.address);
         const pair = await Pair.attach(address);
@@ -64,5 +64,9 @@ describe("UniSwap Test", () => {
         });
         expect(await pair.balanceOf(masterKey.address)).to.equal(1236 + 1341); //totalSupply(2236) * 0.6
 
+        const before = await this.tokenB.balanceOf(masterKey.address);
+        await this.router.swapExactTokensForTokens(100, 450, [this.tokenA.address, this.tokenB.address], masterKey, endTS);
+        const after = await this.tokenB.balanceOf(masterKey.address);
+        console.log(before.toString(), after.toString());
     });
 })
