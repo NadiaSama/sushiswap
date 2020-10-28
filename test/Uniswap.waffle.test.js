@@ -7,8 +7,7 @@ describe("UniSwap Test", () => {
         const [masterKey] = await ethers.getSigners();
 
         const Factory = await ethers.getContractFactory("UniswapV2Factory");
-        //const factory = await Factory.deploy("0x0000000000000000000000000000000000000000"); //disable fee
-        const factory = await Factory.deploy(masterKey.address); //disable fee
+        const factory = await Factory.deploy(masterKey.address); 
         await factory.deployed();
         console.log("Factory deployed to:", factory.address);
 
@@ -36,13 +35,14 @@ describe("UniSwap Test", () => {
     }); 
     const endTS =  10000000000;
 
-    it("test add liquid", async() => {
+    it("test router liquid, swap, remove", async() => {
         const Pair = await ethers.getContractFactory("UniswapV2Pair");
         const [masterKey, recv] = await ethers.getSigners();
         await this.factory.createPair(this.tokenA.address, this.tokenB.address);
         const address = await this.factory.getPair(this.tokenA.address, this.tokenB.address);
         const pair = await Pair.attach(address);
 
+        //test add liquid
         await this.tokenA.approve(this.router.address, 1000);
         await this.tokenB.approve(this.router.address, 5000);
         await this.router.addLiquidity(this.tokenA.address, this.tokenB.address, 1000, 5000, 0, 0, masterKey.address, endTS);
@@ -64,9 +64,32 @@ describe("UniSwap Test", () => {
         });
         expect(await pair.balanceOf(masterKey.address)).to.equal(1236 + 1341); //totalSupply(2236) * 0.6
 
-        const before = await this.tokenB.balanceOf(masterKey.address);
-        await this.router.swapExactTokensForTokens(100, 450, [this.tokenA.address, this.tokenB.address], masterKey, endTS);
-        const after = await this.tokenB.balanceOf(masterKey.address);
-        console.log(before.toString(), after.toString());
+        //test swap
+        let before = await this.tokenB.balanceOf(masterKey.address);
+        await this.router.swapExactTokensForTokens(100, 450, [this.tokenA.address, this.tokenB.address], masterKey.address, endTS);
+        let after = await this.tokenB.balanceOf(masterKey.address);
+        expect(await pair.getReserves()).to.satisfies(function(elems){
+            return elems[0].toNumber() == 1700 && elems[1].toNumber() == 7531;
+        });
+        expect(after - before).to.equal(469);
+
+        await this.tokenB.approve(this.router.address, 500);
+        before = await this.tokenA.balanceOf(masterKey.address);
+        await this.router.swapExactTokensForTokens(500, 105, [this.tokenB.address, this.tokenA.address], masterKey.address, endTS);
+        after = await this.tokenA.balanceOf(masterKey.address);
+        expect(await pair.getReserves()).to.satisfies(function(elems){
+            return elems[0].toNumber() == 1595 && elems[1].toNumber() == 8031;
+        });
+        expect(after - before).to.equal(105);
+
+        //test remove liquid
+        await pair.approve(this.router.address, 1000);
+        const ba = await this.tokenA.balanceOf(masterKey.address);
+        const bb = await this.tokenB.balanceOf(masterKey.address);
+        await this.router.removeLiquidity(this.tokenA.address, this.tokenB.address, 1000, 200, 1000, masterKey.address, endTS);
+        const aa = await this.tokenA.balanceOf(masterKey.address);
+        const ab = await this.tokenB.balanceOf(masterKey.address);
+        expect(ab - bb).to.equal(2245);
+        expect(aa - ba).to.equal(445);
     });
 })
